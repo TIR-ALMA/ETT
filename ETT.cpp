@@ -28,12 +28,14 @@ private:
     std::string exec(const std::string& cmd) {
         std::array<char, 128> buffer;
         std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+        std::unique_ptr<FILE, int(*)(FILE*)> pipe(popen(cmd.c_str(), "r"), pclose);
         if (!pipe) {
             throw std::runtime_error("popen() failed!");
         }
         while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data // Remove trailing newline
+            result += buffer.data();
+        }
+        // Remove trailing newline
         if (!result.empty() && result.back() == '\n') {
             result.pop_back();
         }
@@ -148,10 +150,10 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Check if process still exists
-        std::string checkCmd = "ps -p " +(trainingPid) + " >/dev/null 2>&1 && echo 1 || echo 0";
+        std::string checkCmd = "ps -p " + std::to_string(trainingPid) + " >/dev/null 2>&1 && echo 1 || echo 0";
         try {
-            std::string result = exec(checkCmd);
-            if (result == "1") {
+            std::string result_check = exec(checkCmd);
+            if (result_check == "1") {
                 // Process still alive, try SIGKILL
                 std::string forceKillCmd = "kill -9 " + std::to_string(trainingPid) + " 2>/dev/null";
                 system(forceKillCmd.c_str());
